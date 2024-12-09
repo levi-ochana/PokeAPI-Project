@@ -8,11 +8,15 @@ app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://admin:secret_password@mongo:27017/pokemon_db?authSource=admin"  # Connect to MongoDB via Docker container name
 mongo = PyMongo(app)
 
-# Function to convert ObjectId to string
+# Function to convert ObjectId to string and handle dict/list
 def json_serializable(obj):
     if isinstance(obj, ObjectId):
         return str(obj)
-    raise TypeError(f"Type {type(obj)} not serializable")
+    elif isinstance(obj, dict):  # if the object is a dictionary
+        return {key: json_serializable(value) for key, value in obj.items()}  # recursively convert each item
+    elif isinstance(obj, list):  # if the object is a list
+        return [json_serializable(item) for item in obj]  # recursively convert each item in the list
+    return obj  # return as is for other types like string, int
 
 # Endpoint to retrieve all Pokémon
 @app.route("/api/pokemon", methods=["GET"])

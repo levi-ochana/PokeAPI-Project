@@ -55,10 +55,7 @@ def main():
 
 # Define the Flask API URL (the backend URL)
 def get_backend_ip():
-    backend_ip = os.getenv('BACKEND_IP')
-    if not backend_ip:
-        # Default IP for Docker setup or local environment
-        backend_ip = 'localhost'
+    backend_ip = os.getenv('BACKEND_IP', 'localhost')  # Default to 'localhost' if environment variable is not set
     return backend_ip
 
 API_URL = f"http://{get_backend_ip()}:5000/api/pokemon"  # API URL of Flask service
@@ -74,9 +71,9 @@ def check_pokemon_in_db(pokemon_name):
 # Function to save a Pokémon to the database (via Flask API)
 def save_pokemon_to_db(pokemon):
     pokemon_data = {
-        "name": pokemon['name'],
-        "type": [t['type']['name'] for t in pokemon['types']],
-        "abilities": [a['ability']['name'] for a in pokemon['abilities']]
+        "name": pokemon.get('name', 'Unknown'),
+        "type": [t['type']['name'] for t in pokemon.get('types', [])],
+        "abilities": [a['ability']['name'] for a in pokemon.get('abilities', [])]
     }
     response = requests.post(API_URL, json=pokemon_data)
     if response.status_code == 201:
@@ -116,8 +113,8 @@ def fetch_pokemon_details(pokemon_url):
 # Function to display Pokémon details
 def print_pokemon_details(pokemon):
     print(f"Name: {pokemon['name']}")
-    print(f"Type: {', '.join([t['type']['name'] for t in pokemon['types']])}")
-    print(f"Abilities: {', '.join([a['ability']['name'] for a in pokemon['abilities']])}")
+    print(f"Type: {', '.join([t['type']['name'] for t in pokemon.get('types', [])])}")
+    print(f"Abilities: {', '.join([a['ability']['name'] for a in pokemon.get('abilities', [])])}")
 
 if __name__ == "__main__":
     main()
