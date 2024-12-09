@@ -1,7 +1,5 @@
 import requests
-import json
 import random
-import subprocess
 import os
 
 # Main function to run the game
@@ -19,8 +17,12 @@ def main():
             print("Game start!")
             pokemon_list = fetch_pokemon_list(limit=5)  # Fetch a list of Pokémon
             if pokemon_list:
-                # Fetch details for each Pokémon
-                pokemon_details_list = [fetch_pokemon_details(pokemon['url']) for pokemon in pokemon_list if fetch_pokemon_details(pokemon['url'])]
+                # Fetch details for each Pokémon and avoid redundant calls
+                pokemon_details_list = []
+                for pokemon in pokemon_list:
+                    details = fetch_pokemon_details(pokemon['url'])
+                    if details:
+                        pokemon_details_list.append(details)
 
                 # Display fetched Pokémon names
                 print("Pokémon names retrieved:")
@@ -42,7 +44,7 @@ def main():
                     save_pokemon_to_db(random_pokemon)  # Save to MongoDB via API
                     print(f"\nRandom Pokémon added:")
                     print_pokemon_details(random_pokemon)
-            continue
+
         elif user_input == "2":
             display_saved_pokemon()  # Display all saved Pokémon (can be updated to fetch from DB)
         elif user_input == "3":

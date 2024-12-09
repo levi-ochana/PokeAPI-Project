@@ -17,32 +17,47 @@ def json_serializable(obj):
 # Endpoint to retrieve all Pokémon
 @app.route("/api/pokemon", methods=["GET"])
 def get_pokemon():
-    pokemon_list = mongo.db.pokemon.find()  # Retrieve all Pokémon from the DB
-    pokemon_list = [pokemon for pokemon in pokemon_list]
-    # Convert ObjectId to string before returning the response
-    return jsonify([json_serializable(pokemon) for pokemon in pokemon_list])
+    try:
+        pokemon_list = mongo.db.pokemon.find()  # Retrieve all Pokémon from the DB
+        pokemon_list = [pokemon for pokemon in pokemon_list]
+        # Convert ObjectId to string before returning the response
+        return jsonify([json_serializable(pokemon) for pokemon in pokemon_list])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Endpoint to add a new Pokémon
 @app.route("/api/pokemon", methods=["POST"])
 def add_pokemon():
-    data = request.get_json()
-    pokemon = {
-        "name": data["name"],
-        "type": data["type"],
-        "abilities": data["abilities"]
-    }
-    mongo.db.pokemon.insert_one(pokemon)  # Insert new Pokémon into the DB
-    return jsonify({"message": "Pokémon saved to database."}), 201
+    try:
+        data = request.get_json()
+        
+        # Check if required data exists
+        if not all(key in data for key in ["name", "type", "abilities"]):
+            return jsonify({"error": "Missing required fields: name, type, abilities"}), 400
+
+        pokemon = {
+            "name": data["name"],
+            "type": data["type"],
+            "abilities": data["abilities"]
+        }
+
+        mongo.db.pokemon.insert_one(pokemon)  # Insert new Pokémon into the DB
+        return jsonify({"message": "Pokémon saved to database."}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Endpoint to retrieve a Pokémon by name
 @app.route("/api/pokemon/<name>", methods=["GET"])
 def get_pokemon_by_name(name):
-    pokemon = mongo.db.pokemon.find_one({"name": name})
-    if pokemon:
-        # Convert ObjectId to string before returning the response
-        return jsonify(json_serializable(pokemon))
-    else:
-        return jsonify({"message": "Pokémon not found."}), 404
+    try:
+        pokemon = mongo.db.pokemon.find_one({"name": name})
+        if pokemon:
+            # Convert ObjectId to string before returning the response
+            return jsonify(json_serializable(pokemon))
+        else:
+            return jsonify({"message": "Pokémon not found."}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
