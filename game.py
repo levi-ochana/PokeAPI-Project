@@ -10,27 +10,16 @@ def main():
         print("1. Draw a Pokémon")
         print("2. View all saved Pokémon")
         print("3. Exit")
-        
+
         user_input = input("Choose an option (1/2/3): ").strip()
-        
+
         if user_input == "1":
             print("Game start!")
-            pokemon_list = fetch_pokemon_list(limit=5)  # Fetch a list of Pokémon
+            # Fetch 5 random Pokémon from the API
+            pokemon_list = fetch_random_pokemon_list(limit=5)
             if pokemon_list:
-                # Fetch details for each Pokémon and avoid redundant calls
-                pokemon_details_list = []
-                for pokemon in pokemon_list:
-                    details = fetch_pokemon_details(pokemon['url'])
-                    if details:
-                        pokemon_details_list.append(details)
-
-                # Display fetched Pokémon names
-                print("Pokémon names retrieved:")
-                for pokemon in pokemon_details_list:
-                    print(pokemon['name'])  # Display names
-
-                # Choose a random Pokémon
-                random_pokemon = random.choice(pokemon_details_list)  
+                # Choose a random Pokémon from the list
+                random_pokemon = random.choice(pokemon_list)
                 pokemon_name = random_pokemon['name']
 
                 # Check if the random Pokémon already exists in the database
@@ -95,13 +84,17 @@ def display_saved_pokemon():
     else:
         print(f"Failed to fetch saved Pokémon: {response.status_code} - {response.text}")
 
-# Function to fetch Pokémon details from an external API (for example, PokeAPI)
-def fetch_pokemon_list(limit=5):
-    response = requests.get(f"https://pokeapi.co/api/v2/pokemon?limit={limit}")
-    if response.status_code == 200:
-        return response.json()['results']
-    print("Failed to fetch Pokémon list.")
-    return []
+# Function to fetch 5 random Pokémon from the PokeAPI
+def fetch_random_pokemon_list(limit=5):
+    # PokeAPI doesn't support random fetch directly, so we fetch random IDs
+    pokemon_list = []
+    for _ in range(limit):
+        random_id = random.randint(1, 1000)  # Random number between 1 and 1000 (PokeAPI has 1000 Pokémon)
+        pokemon_url = f"https://pokeapi.co/api/v2/pokemon/{random_id}/"  # URL to fetch Pokémon details by ID
+        response = requests.get(pokemon_url)
+        if response.status_code == 200:
+            pokemon_list.append(response.json())
+    return pokemon_list
 
 def fetch_pokemon_details(pokemon_url):
     response = requests.get(pokemon_url)
@@ -113,20 +106,25 @@ def fetch_pokemon_details(pokemon_url):
 # Function to display Pokémon details
 def print_pokemon_details(pokemon):
     print(f"Name: {pokemon['name']}")
-    
+
     # Check and print types
     types = pokemon.get('types', [])
     if types:
         print(f"Type: {', '.join([t['type']['name'] for t in types])}")
     else:
         print("Type: Not available")
-    
+
     # Check and print abilities
     abilities = pokemon.get('abilities', [])
     if abilities:
-        print(f"Abilities: {', '.join([a['ability']['name'] for a in abilities])}")
+        try:
+            ability_names = [a['ability']['name'] for a in abilities]
+            print(f"Abilities: {', '.join(ability_names)}")
+        except (TypeError, KeyError) as e:
+            print(f"Abilities: Not available (Error: {e})")
     else:
         print("Abilities: Not available")
+
 
 if __name__ == "__main__":
     main()
