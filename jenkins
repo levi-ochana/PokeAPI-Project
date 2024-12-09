@@ -55,6 +55,7 @@ pipeline {
                             returnStdout: true
                         ).trim()
                     }
+                    echo "The  Elastic IP is: ${env.ELASTIC_IP}"
                 }
             }
         }
