@@ -15,7 +15,7 @@ pipeline {
         // Clone the Flask App Repository
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/levi-ochana/PokeAPI-Game-with-WebAPI.git'  // Repository URL
+                git 'https://github.com/levi-ochana/Poke_API'  // Repository URL
             }
         }
 
