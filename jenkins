@@ -1,0 +1,145 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_HUB_REPO = 'leviochana'  // Docker Hub username
+        DOCKER_IMAGE = "${DOCKER_HUB_REPO}/flaskimage:latest"  // Flask Docker image name
+        MONGO_IMAGE = 'mongo:latest'  // MongoDB Docker image
+        EC2_USER = 'ec2-user'  // EC2 user
+
+        // SSH Key for EC2
+        SSH_KEY = credentials('my-ssh-key')  // SSH Key to access EC2
+    }
+
+    stages {
+        // Clone the Flask App Repository
+        stage('Clone Repository') {
+            steps {
+                git 'https://github.com/levi-ochana/PokeAPI-Game-with-WebAPI.git'  // Repository URL
+            }
+        }
+
+        // Initialize Terraform
+        stage('Initialize Terraform') {
+            steps {
+                withCredentials([string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
+                                 string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                                 string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')]) {
+                    dir('Deployment') {  // Enter the Deployment directory
+                        sh 'terraform init'  // Initialize Terraform
+                    }
+                }
+            }
+        }
+
+        // Apply Terraform to create resources (EC2 instances)
+        stage('Apply Terraform') {
+            steps {
+                withCredentials([string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
+                                 string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                                 string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')]) {
+                    dir('Deployment') {  // Enter the Deployment directory
+                        sh 'terraform apply -auto-approve'  // Apply Terraform configurations
+                    }
+                }
+            }
+        }
+
+        // Fetch Elastic IP (EIP)
+        stage('Fetch Elastic IP') {
+            steps {
+                script {
+                    env.ELASTIC_IP = dir('Deployment') {
+                        sh(
+                            script: 'terraform output -raw poke_backend_eip',
+                            returnStdout: true
+                        ).trim()
+                    }
+                }
+            }
+        }
+
+        // Fetch SECOND Elastic IP (EIP)
+        stage('Fetch SECOND Elastic IP') {
+            steps {
+                script {
+                    env.SECOND_ELASTIC_IP = dir('Deployment') {
+                        sh(
+                            script: 'terraform output -raw poke_game_eip',
+                            returnStdout: true
+                        ).trim()
+                    }
+                    echo "The SECOND Elastic IP is: ${env.SECOND_ELASTIC_IP}"
+                }
+            }
+        }
+
+        // Build the Flask App Docker Image
+        stage('Build Docker Image') {
+            steps {
+                dir('Flask_image') {
+                    sh 'docker build -t $DOCKER_IMAGE .'  // Build the Flask Docker image
+                }
+            }
+        }
+
+        // Push the Docker Image to Docker Hub
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials-username', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKER_IMAGE
+                    """
+                }
+            }
+        }
+
+
+        // Set game_IP on EC2
+        stage('Set game_IP on EC2') {
+            steps {
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$SECOND_ELASTIC_IP \
+                'echo "export BACKEND_IP=$ELASTIC_IP" >> ~/.bashrc && source ~/.bashrc'
+                """
+            }
+        }
+
+
+        // Deploy MongoDB on EC2 using Elastic IP
+        stage('Deploy MongoDB') {
+            steps {
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$ELASTIC_IP \
+                'docker run -d --name mongo -p 27017:27017 -v /data/db:/data/db -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=secret_password mongo'
+                """
+            }
+        }
+
+        // Deploy Flask App on EC2 using Elastic IP
+        stage('Deploy Flask App') {
+            steps {
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$ELASTIC_IP \
+                'export BACKEND_IP=$ELASTIC_IP && \
+                docker pull $DOCKER_IMAGE && \
+                docker stop pokeapi-flask || true && \
+                docker rm pokeapi-flask || true && \
+                docker run -d --name pokeapi-flask -p 5000:5000 --link mongo:mongo -e BACKEND_IP=$ELASTIC_IP $DOCKER_IMAGE'
+                """
+            }
+        }
+
+
+        // Check Running Containers on EC2 using Elastic IP
+        stage('Check Running Containers') {
+            steps {
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$ELASTIC_IP \
+                'docker ps'
+                """
+            }
+        }
+    }
+}
