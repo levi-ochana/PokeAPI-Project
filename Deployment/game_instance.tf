@@ -25,10 +25,10 @@ resource "aws_instance" "game_instance" {
 
               # Clone the PokeAPI game from GitHub
               cd /home/ec2-user
-              git clone https://github.com/levi-ochana/PokeAPI-Game-with-WebAPI.git
+              git clone https://github.com/levi-ochana/Poke_API
 
               # Navigate to the game directory
-              cd PokeAPI-Game-with-WebAPI
+              cd Poke_API
 
               # Install Python dependencies
               sudo pip3 install requests
