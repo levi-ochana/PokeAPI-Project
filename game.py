@@ -113,8 +113,20 @@ def fetch_pokemon_details(pokemon_url):
 # Function to display Pokémon details
 def print_pokemon_details(pokemon):
     print(f"Name: {pokemon['name']}")
-    print(f"Type: {', '.join([t['type']['name'] for t in pokemon.get('types', [])])}")
-    print(f"Abilities: {', '.join([a['ability']['name'] for a in pokemon.get('abilities', [])])}")
+    
+    # Check and print types
+    types = pokemon.get('types', [])
+    if types:
+        print(f"Type: {', '.join([t['type']['name'] for t in types])}")
+    else:
+        print("Type: Not available")
+    
+    # Check and print abilities
+    abilities = pokemon.get('abilities', [])
+    if abilities:
+        print(f"Abilities: {', '.join([a['ability']['name'] for a in abilities])}")
+    else:
+        print("Abilities: Not available")
 
 if __name__ == "__main__":
     main()
