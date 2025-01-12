@@ -1,5 +1,5 @@
 # Create a EC2 Instance for backend-server
-resource "aws_instance" "backend_instance" {
+resource "aws_instance" "backend-server" {
   ami           = "ami-055e3d4f0bbeb5878"  # Amazon Linux 2 AMI ID
   instance_type = "t2.micro"  # Use a t2.micro instance for the free tier
   key_name = data.aws_key_pair.poke_key_pair.key_name
