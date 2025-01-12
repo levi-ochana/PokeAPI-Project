@@ -30,8 +30,8 @@ RUN usermod -aG docker jenkins
 # Switch back to the Jenkins user
 USER jenkins
 
-# Preconfigure Jenkins plugins for pipeline and Docker integration
-RUN jenkins-plugin-cli --plugins "pipeline-model-definition docker-workflow git"
+# Preconfigure Jenkins plugins for pipeline, Docker, Git, and GitHub Integration
+RUN jenkins-plugin-cli --plugins "pipeline-model-definition docker-workflow git github-branch-source"
 
 # Expose Jenkins default port
 EXPOSE 8080

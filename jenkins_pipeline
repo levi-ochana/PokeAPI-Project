@@ -1,6 +1,9 @@
 pipeline {
     agent any
-
+    triggers {
+        // Trigger the pipeline on every commit (GitHub webhook)
+        githubPush() 
+    }
     environment {
         DOCKER_HUB_REPO = 'leviochana'  // Docker Hub username
         DOCKER_IMAGE = "${DOCKER_HUB_REPO}/flaskimage:latest"  // Flask Docker image name
@@ -142,5 +145,16 @@ pipeline {
                 """
             }
         }
+
+        // Check if game.py is running on web-server using web-server Elastic IP
+        stage('Check if game.py is running on web-server') {
+            steps {
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$WEB_SERVER_ELASTIC_IP \
+                'ps aux | grep game.py | grep -v grep'
+                """
+            }
+        }
+
     }
 }
