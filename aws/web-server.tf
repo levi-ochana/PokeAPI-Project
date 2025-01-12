@@ -16,26 +16,26 @@ resource "aws_instance" "web-server" {
 
   # User data script to set up the EC2 instance
   user_data = <<-EOF
-              #!/bin/bash
-              # Update system packages
-              sudo yum update -y
+                #!/bin/bash
+                # Update system packages
+                sudo yum update -y
 
-              # Install Git and Python3
-              sudo yum install -y git python3 python3-pip
+                # Install Git and Python3
+                sudo yum install -y git python3 python3-pip
 
-              # Clone the PokeAPI game from GitHub
-              cd /home/ec2-user
-              git clone https://github.com/levi-ochana/Poke_API
+                # Clone the PokeAPI game from GitHub
+                cd /home/ec2-user
+                git clone https://github.com/levi-ochana/Poke_API
 
-              # Navigate to the game directory
-              cd Poke_API
+                # Navigate to the game directory
+                cd Poke_API
 
-              # Install Python dependencies
-              sudo pip3 install requests
+                # Install Python dependencies
+                sudo pip3 install flask requests
 
-              # Run the game server
-              nohup python3 game.py > game.log 2>&1 &
-              EOF
+                # Run the game server
+                nohup python3 game.py > game.log 2>&1 &
+                EOF
 }
 
 
