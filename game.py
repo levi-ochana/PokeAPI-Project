@@ -10,7 +10,7 @@ def get_backend_ip():
     backend_ip = os.getenv('BACKEND_IP', 'localhost')  # Default to 'localhost' if environment variable is not set
     return backend_ip
 
-API_URL = f"http://{get_backend_ip()}:5000/api/pokemon"  # URL of Flask service
+API_URL = f"http://{get_backend_ip()}:80/api/pokemon"  # URL of Flask service
 
 @app.route("/")
 def index():

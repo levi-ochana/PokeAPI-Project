@@ -34,7 +34,7 @@ resource "aws_instance" "web-server" {
                 sudo pip3 install flask requests
 
                 # Run the game server
-                nohup python3 game.py > game.log 2>&1 &
+                sudo python3 game.py > game.log 2>&1 &
                 EOF
 }
 
