@@ -1,0 +1,8 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+###docker build -t my-jenkins-image .
+###docker run --privileged --user root --name levi -v /var/run/docker.sock:/var/run/docker.sock -p 8081:8080 jenkins-docker
+

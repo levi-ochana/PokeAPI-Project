@@ -1,4 +1,4 @@
-# Create a EC2 Instance for Backend System
+# Create a EC2 Instance for backend-server
 resource "aws_instance" "backend_instance" {
   ami           = "ami-055e3d4f0bbeb5878"  # Amazon Linux 2 AMI ID
   instance_type = "t2.micro"  # Use a t2.micro instance for the free tier
@@ -8,7 +8,7 @@ resource "aws_instance" "backend_instance" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "PokeAPI-Backend"
+    Name = "backend-server"
   }
 # User data script to set up the EC2 instance
   user_data = <<-EOF

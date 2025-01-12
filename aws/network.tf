@@ -103,27 +103,15 @@ resource "aws_route_table_association" "poke_route_table_association" {
   route_table_id = aws_route_table.poke_route_table.id
 }
 
-
-
-
-# Allocate an Elastic IP for the backend EC2 instance
-resource "aws_eip" "poke_backend_eip" {
-  instance = aws_instance.backend_instance.id  # Attach the EIP to your EC2 instance
+# Allocate an Elastic IP for the backend-server EC2 instance
+resource "aws_eip" "backend-server_eip" {
+  instance = aws_instance.backend-server.id  # Attach the EIP to your EC2 instance
   domain      = "vpc"
 }
 
-# Allocate an Elastic IP for the game instance EC2 instance
-resource "aws_eip" "poke_game_eip" {
-  instance = aws_instance.game_instance.id  # Attach the EIP to your game EC2 instance
+# Allocate an Elastic IP for the web-server EC2 instance
+resource "aws_eip" "web-server_eip" {
+  instance = aws_instance.web-server.id  # Attach the EIP to your game EC2 instance
   domain      = "vpc"
-}
-
-# output
-output "poke_backend_eip" {
-  value = aws_eip.poke_backend_eip.public_ip
-}
-
-output "poke_game_eip" {
-  value = aws_eip.poke_game_eip.public_ip
 }
 

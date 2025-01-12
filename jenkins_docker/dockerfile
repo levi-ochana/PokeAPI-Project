@@ -1,0 +1,48 @@
+# Use the official Jenkins LTS image
+FROM jenkins/jenkins:lts
+
+# Switch to the root user
+USER root
+
+# Install Docker CLI and required dependencies
+RUN apt-get update && \
+    apt-get install -y docker.io && \
+    apt-get clean
+
+# Install Terraform
+RUN apt-get update && \
+    apt-get install -y wget unzip && \
+    wget https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip && \
+    unzip terraform_1.5.7_linux_amd64.zip -d /usr/local/bin && \
+    rm terraform_1.5.7_linux_amd64.zip
+
+# Install AWS CLI using the official installer
+RUN apt-get update && \
+    apt-get install -y curl unzip && \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Grant Jenkins user access to Docker
+RUN usermod -aG docker jenkins
+
+# Switch back to the Jenkins user
+USER jenkins
+
+# Preconfigure Jenkins plugins for pipeline and Docker integration
+RUN jenkins-plugin-cli --plugins "pipeline-model-definition docker-workflow git"
+
+# Expose Jenkins default port
+EXPOSE 8080
+
+# Entry point for Jenkins
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/jenkins.sh"]
+
+
+
+###docker build -t my-jenkins-image .
+###docker run --privileged --user root --name levi -v /var/run/docker.sock:/var/run/docker.sock -p 8081:8080 jenkins-docker
+

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Pokémon</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Draw a Random Pokémon</h1>
+        {% if message %}
+        <p>{{ message }}</p>
+        {% endif %}
+        {% if pokemon %}
+        <div class="pokemon-card">
+            <h2>{{ pokemon.name | capitalize }}</h2>
+            <img src="{{ pokemon.image_url }}" alt="{{ pokemon.name }}">
+            <p><strong>Type:</strong> {{ pokemon.type | join(', ') }}</p>
+            <p><strong>Abilities:</strong></p>
+            <ul>
+                {% for ability in pokemon.abilities %}
+                    <li>{{ ability.name | capitalize }}{% if ability.is_hidden %} (Hidden Ability){% endif %}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <a href="/" class="button">Back to Home</a>
+    </div>
+</body>
+</html>

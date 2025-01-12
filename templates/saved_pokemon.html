@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Pokémon</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Saved Pokémon</h1>
+        {% if pokemon_list %}
+        <ul>
+            {% for pokemon in pokemon_list %}
+                <li>
+                    <a href="/api/pokemon/{{ pokemon.name }}">{{ pokemon.name }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No Pokémon found in the database.</p>
+        {% endif %}
+        <a href="/" class="button">Back to Home</a>
+    </div>
+</body>
+</html>

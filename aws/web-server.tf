@@ -1,5 +1,5 @@
-# Create an EC2 Instance for PokeAPI Game 
-resource "aws_instance" "game_instance" {
+# Create an EC2 Instance for web-server Game 
+resource "aws_instance" "web-server" {
   ami           = "ami-055e3d4f0bbeb5878"  # Amazon Linux 2 AMI ID
   instance_type = "t2.micro"  # Free tier instance type
   key_name = data.aws_key_pair.poke_key_pair.key_name
@@ -9,7 +9,7 @@ resource "aws_instance" "game_instance" {
 
 
   tags = {
-    Name = "PokeAPI-Game"
+    Name = "web-server"
   }
 
   depends_on = [aws_instance.backend_instance]

@@ -25,7 +25,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
                                  string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
                                  string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')]) {
-                    dir('Deployment') {  // Enter the Deployment directory
+                    dir('aws') {  // Enter the Deployment directory
                         sh 'terraform init'  // Initialize Terraform
                     }
                 }
@@ -38,39 +38,39 @@ pipeline {
                 withCredentials([string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
                                  string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
                                  string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')]) {
-                    dir('Deployment') {  // Enter the Deployment directory
+                    dir('aws') {  // Enter the Deployment directory
                         sh 'terraform apply -auto-approve'  // Apply Terraform configurations
                     }
                 }
             }
         }
 
-        // Fetch Elastic IP (EIP)
-        stage('Fetch Elastic IP') {
+        // Fetch backend-server Elastic IP (EIP)
+        stage('Fetch backend-server Elastic IP') {
             steps {
                 script {
-                    env.ELASTIC_IP = dir('Deployment') {
+                    env.BACKEND_SERVER_ELASTIC_IP = dir('aws') {
                         sh(
-                            script: 'terraform output -raw poke_backend_eip',
+                            script: 'terraform output -raw backend-server_eip',
                             returnStdout: true
                         ).trim()
                     }
-                    echo "The  Elastic IP is: ${env.ELASTIC_IP}"
+                    echo "The backend-server Elastic IP is: ${env.BACKEND_SERVER_ELASTIC_IP}"
                 }
             }
         }
 
-        // Fetch SECOND Elastic IP (EIP)
-        stage('Fetch SECOND Elastic IP') {
+        // Fetch web-server Elastic IP (EIP)
+        stage('Fetch web-server Elastic IP') {
             steps {
                 script {
-                    env.SECOND_ELASTIC_IP = dir('Deployment') {
+                    env.WEB_SERVER_ELASTIC_IP = dir('aws') {
                         sh(
-                            script: 'terraform output -raw poke_game_eip',
+                            script: 'terraform output -raw web-server_eip',
                             returnStdout: true
                         ).trim()
                     }
-                    echo "The SECOND Elastic IP is: ${env.SECOND_ELASTIC_IP}"
+                    echo "The web-server Elastic IP is: ${env.WEB_SERVER_ELASTIC_IP}"
                 }
             }
         }
@@ -97,47 +97,47 @@ pipeline {
         }
 
 
-        // Set game_IP on EC2
-        stage('Set game_IP on EC2') {
+        // Set web-server_IP on EC2
+        stage('Set web-server_IP on EC2') {
             steps {
                 sh """
-                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$SECOND_ELASTIC_IP \
-                'echo "export BACKEND_IP=$ELASTIC_IP" >> ~/.bashrc && source ~/.bashrc'
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$WEB_SERVER_ELASTIC_IP \
+                'echo "export BACKEND_IP=$BACKEND_SERVER_ELASTIC_IP" >> ~/.bashrc && source ~/.bashrc'
                 """
             }
         }
 
 
-        // Deploy MongoDB on EC2 using Elastic IP
+        // Deploy MongoDB on EC2 using backend-server Elastic IP
         stage('Deploy MongoDB') {
             steps {
                 sh """
-                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$ELASTIC_IP \
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
                 'docker run -d --name mongo -p 27017:27017 -v /data/db:/data/db -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=secret_password mongo'
                 """
             }
         }
 
-        // Deploy Flask App on EC2 using Elastic IP
+        // Deploy Flask App on EC2 using backend-server Elastic IP
         stage('Deploy Flask App') {
             steps {
                 sh """
-                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$ELASTIC_IP \
-                'export BACKEND_IP=$ELASTIC_IP && \
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
+                'export BACKEND_IP=$BACKEND_SERVER_ELASTIC_IP && \
                 docker pull $DOCKER_IMAGE && \
                 docker stop pokeapi-flask || true && \
                 docker rm pokeapi-flask || true && \
-                docker run -d --name pokeapi-flask -p 5000:5000 --link mongo:mongo -e BACKEND_IP=$ELASTIC_IP $DOCKER_IMAGE'
+                docker run -d --name pokeapi-flask -p 5000:5000 --link mongo:mongo -e BACKEND_IP=$BACKEND_SERVER_ELASTIC_IP $DOCKER_IMAGE'
                 """
             }
         }
 
 
-        // Check Running Containers on EC2 using Elastic IP
+        // Check Running Containers on EC2 using backend-server Elastic IP
         stage('Check Running Containers') {
             steps {
                 sh """
-                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$ELASTIC_IP \
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
                 'docker ps'
                 """
             }
