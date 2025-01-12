@@ -10,7 +10,7 @@ def get_backend_ip():
     backend_ip = os.getenv('BACKEND_IP', 'localhost')  # Default to 'localhost' if environment variable is not set
     return backend_ip
 
-API_URL = f"http://{get_backend_ip()}:80/api/pokemon"  # URL of Flask service
+API_URL = f"http://{get_backend_ip()}:5000/api/pokemon"  # URL of Flask service
 
 @app.route("/")
 def index():
@@ -89,4 +89,4 @@ def get_pokemon_by_name(name):
     return jsonify({"error": "Pokémon not found."}), 404
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=80)
+    app.run(debug=True, host="0.0.0.0", port=5001)

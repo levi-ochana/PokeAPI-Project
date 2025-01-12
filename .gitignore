@@ -3,5 +3,8 @@ __pycache__/
 *.pyc
 *.pyo
 
+פקודות לבניית הדוקר גנקינס
 ###docker build -t poke-api-jenkins-image .
 ###docker run --privileged --user root --name poke-api-jenkins -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 poke-api-jenkins-image
+
+צריך להוסיף חיבור בגיטהב לטריגר בנייה בגיטהב של קומיט
