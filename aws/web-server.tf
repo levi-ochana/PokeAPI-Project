@@ -12,7 +12,7 @@ resource "aws_instance" "web-server" {
     Name = "web-server"
   }
 
-  depends_on = [aws_instance.backend_instance]
+  depends_on = [aws_instance.backend-server]
 
   # User data script to set up the EC2 instance
   user_data = <<-EOF
