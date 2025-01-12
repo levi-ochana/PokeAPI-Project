@@ -4,7 +4,7 @@ provider "aws" {
   region = var.region  # Use the region variable
 }
 
-# Create a VPC (Virtual Private Cloud)
+# Create a VPC
 resource "aws_vpc" "poke_vpc" {
   cidr_block = var.vpc_cidr_block  # Use the VPC CIDR block variable
 }
@@ -17,7 +17,7 @@ resource "aws_subnet" "poke_subnet" {
 }
 
 
-# Use an existing Key Pair "vockey" 
+#### Use an existing Key Pair "vockey"  (Need to change to create a new key)
 data "aws_key_pair" "poke_key_pair" {
   key_name = "vockey"
 }
