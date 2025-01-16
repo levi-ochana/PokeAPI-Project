@@ -46,7 +46,7 @@ This project is a web-based application that integrates with an external Pokémo
 ---
 
 ### 🗺️ **Project Structure**
-![System Diagram](assets/PokeAPI.png)
+![System Diagram](assets/PokeAPI(1).png)
 
 ---
 
