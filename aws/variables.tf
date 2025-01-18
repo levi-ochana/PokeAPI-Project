@@ -35,8 +35,9 @@ variable "ssh_port" {
 
 variable "game_app_port" {
   description = "Port for the game app"
-  default     = 8080
+  default     = 5001
 }
+
 
 variable "MongoDB_port" {
   description = "Port for the MongoDB port"
