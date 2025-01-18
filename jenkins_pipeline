@@ -2,24 +2,19 @@ pipeline {
     agent any
     triggers {
         // Trigger the pipeline on every commit (GitHub webhook)
-        githubPush()
+        githubPush() 
     }
     environment {
-        CONFIG_FILE = 'credentials.json'  // Path to the credentials JSON file
+        DOCKER_HUB_REPO = 'leviochana'  // Docker Hub username
+        DOCKER_IMAGE = "${DOCKER_HUB_REPO}/flaskimage:latest"  // Flask Docker image name
+        MONGO_IMAGE = 'mongo:latest'  // MongoDB Docker image
+        EC2_USER = 'ec2-user'  // EC2 user
+
+        // SSH Key for EC2
+        SSH_KEY = credentials('my-ssh-key')  // SSH Key to access EC2
     }
 
     stages {
-        // Load credentials from JSON file
-        stage('Load Credentials') {
-            steps {
-                script {
-                    def config = readJSON file: CONFIG_FILE
-                    env.DOCKER_HUB_REPO = config.docker_hub.username
-                    env.EC2_USER = config.aws.ssh.user
-                }
-            }
-        }
-
         // Clone the Flask App Repository
         stage('Clone Repository') {
             steps {
@@ -30,13 +25,11 @@ pipeline {
         // Initialize Terraform
         stage('Initialize Terraform') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
-                    string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')
-                ]) {
-                    dir('aws') {
-                        sh 'terraform init'
+                withCredentials([string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
+                                 string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                                 string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')]) {
+                    dir('aws') {  // Enter the Deployment directory
+                        sh 'terraform init'  // Initialize Terraform
                     }
                 }
             }
@@ -45,13 +38,11 @@ pipeline {
         // Apply Terraform to create resources (EC2 instances)
         stage('Apply Terraform') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
-                    string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')
-                ]) {
-                    dir('aws') {
-                        sh 'terraform apply -auto-approve'
+                withCredentials([string(credentialsId: 'aws_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
+                                 string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                                 string(credentialsId: 'aws_session_token', variable: 'AWS_SESSION_TOKEN')]) {
+                    dir('aws') {  // Enter the Deployment directory
+                        sh 'terraform apply -auto-approve'  // Apply Terraform configurations
                     }
                 }
             }
@@ -62,8 +53,12 @@ pipeline {
             steps {
                 script {
                     env.BACKEND_SERVER_ELASTIC_IP = dir('aws') {
-                        sh(script: 'terraform output -raw backend-server_eip', returnStdout: true).trim()
+                        sh(
+                            script: 'terraform output -raw backend-server_eip',
+                            returnStdout: true
+                        ).trim()
                     }
+                    echo "The backend-server Elastic IP is: ${env.BACKEND_SERVER_ELASTIC_IP}"
                 }
             }
         }
@@ -73,8 +68,12 @@ pipeline {
             steps {
                 script {
                     env.WEB_SERVER_ELASTIC_IP = dir('aws') {
-                        sh(script: 'terraform output -raw web-server_eip', returnStdout: true).trim()
+                        sh(
+                            script: 'terraform output -raw web-server_eip',
+                            returnStdout: true
+                        ).trim()
                     }
+                    echo "The web-server Elastic IP is: ${env.WEB_SERVER_ELASTIC_IP}"
                 }
             }
         }
@@ -83,7 +82,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('Flask_image') {
-                    sh 'docker build -t ${DOCKER_HUB_REPO}/flaskimage:latest .'
+                    sh 'docker build -t $DOCKER_IMAGE .'  // Build the Flask Docker image
                 }
             }
         }
@@ -91,88 +90,71 @@ pipeline {
         // Push the Docker Image to Docker Hub
         stage('Push Docker Image') {
             steps {
-                withCredentials([
-                    usernamePassword(credentialsId: 'docker-hub-credentials-username', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
-                ]) {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials-username', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh """
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push ${DOCKER_HUB_REPO}/flaskimage:latest
+                    docker push $DOCKER_IMAGE
                     """
                 }
             }
         }
+
 
         // Set web-server_IP on EC2
         stage('Set web-server_IP on EC2') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'my-ssh-key', keyFileVariable: 'SSH_KEY')
-                ]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$WEB_SERVER_ELASTIC_IP \
-                    'echo "export BACKEND_IP=$BACKEND_SERVER_ELASTIC_IP" >> ~/.bashrc && source ~/.bashrc'
-                    """
-                }
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$WEB_SERVER_ELASTIC_IP \
+                'echo "export BACKEND_IP=$BACKEND_SERVER_ELASTIC_IP" >> ~/.bashrc && source ~/.bashrc'
+                """
             }
         }
+
 
         // Deploy MongoDB on EC2 using backend-server Elastic IP
         stage('Deploy MongoDB') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'my-ssh-key', keyFileVariable: 'SSH_KEY')
-                ]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
-                    'docker run -d --name mongo -p 27017:27017 -v /data/db:/data/db -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=secret_password mongo'
-                    """
-                }
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
+                'docker run -d --name mongo -p 27017:27017 -v /data/db:/data/db -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=secret_password mongo'
+                """
             }
         }
 
         // Deploy Flask App on EC2 using backend-server Elastic IP
         stage('Deploy Flask App') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'my-ssh-key', keyFileVariable: 'SSH_KEY')
-                ]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
-                    'docker pull ${DOCKER_HUB_REPO}/flaskimage:latest && \
-                    docker stop pokeapi-flask || true && \
-                    docker rm pokeapi-flask || true && \
-                    docker run -d --name pokeapi-flask -p 5000:5000 --link mongo:mongo ${DOCKER_HUB_REPO}/flaskimage:latest'
-                    """
-                }
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
+                'export BACKEND_IP=$BACKEND_SERVER_ELASTIC_IP && \
+                docker pull $DOCKER_IMAGE && \
+                docker stop pokeapi-flask || true && \
+                docker rm pokeapi-flask || true && \
+                docker run -d --name pokeapi-flask -p 5000:5000 --link mongo:mongo -e BACKEND_IP=$BACKEND_SERVER_ELASTIC_IP $DOCKER_IMAGE'
+                """
             }
         }
+
 
         // Check Running Containers on EC2 using backend-server Elastic IP
         stage('Check Running Containers') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'my-ssh-key', keyFileVariable: 'SSH_KEY')
-                ]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
-                    'docker ps'
-                    """
-                }
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$BACKEND_SERVER_ELASTIC_IP \
+                'docker ps'
+                """
             }
         }
 
         // Check if game.py is running on web-server using web-server Elastic IP
         stage('Check if game.py is running on web-server') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'my-ssh-key', keyFileVariable: 'SSH_KEY')
-                ]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$WEB_SERVER_ELASTIC_IP \
-                    'ps aux | grep game.py | grep -v grep'
-                    """
-                }
+                sh """
+                ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$WEB_SERVER_ELASTIC_IP \
+                'ps aux | grep game.py | grep -v grep'
+                """
             }
         }
+
     }
 }
