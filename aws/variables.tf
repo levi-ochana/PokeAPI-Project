@@ -35,7 +35,7 @@ variable "ssh_port" {
 
 variable "game_app_port" {
   description = "Port for the game app"
-  default     = 5001
+  default     = 9000
 }
 
 
